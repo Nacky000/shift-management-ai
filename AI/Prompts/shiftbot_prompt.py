@@ -82,7 +82,8 @@ SHIFTBOT_PROMPT = """
                 {
                     "date":"YYYY-MM-DD",
                     "start":"HH:MM",
-                    "end":"HH:MM"
+                    "end":"HH:MM",
+                    "memo":""
                 }
             ]
         }
@@ -99,12 +100,33 @@ SHIFTBOT_PROMPT = """
                 {
                     "date":"2026-06-20",
                     "start":"17:00",
-                    "end":"22:00"
+                    "end":"22:00",
+                    "memo":""
                 },
                 {
                     "date":"2026-06-21",
                     "start":"18:00",
-                    "end":"22:00"
+                    "end":"22:00",
+                    "memo":""
+                }
+            ]
+        }
+    ]
+}
+
+memoの使用は次のような場合
+例：7/10なら19時以降ならいつでも
+{
+    "tasks":[
+        {
+            "action":"write",
+            "type":"schedule",
+            "shifts":[
+                {
+                    "date":"2026-07-10",
+                    "start":"19:00",
+                    "end":null,
+                    "memo":"19時以降ならいつでも"
                 }
             ]
         }
@@ -125,20 +147,70 @@ SHIFTBOT_PROMPT = """
             "old_end":"HH:MM",
             "new_start":"HH:MM",
             "new_end":"HH:MM"
-            }
+        }
     ]
 }
 
 分からない項目は null
 例：明日のシフトを19時から22時に変更したい
 {
-    "action":"write",
-    "type":"change",
-    "date":"YYYY-MM-DD",
-    "old_start":null,
-    "old_end":null,
-    "new_start":"19:00",
-    "new_end":"22:00"
+    "tasks":[
+        {
+            "action":"write",
+            "type":"change",
+            "date":"YYYY-MM-DD",
+            "old_start":null,
+            "old_end":null,
+            "new_start":"19:00",
+            "new_end":"22:00"
+        }
+    ]
+}
+
+一部の変更の場合
+例：20日は19時からでお願いします
+{
+    "tasks":[
+        {
+            "action":"write",
+            "type":"change",
+            "date":"2026-06-20",
+            "old_start":null,
+            "old_end":null,
+            "new_start":"19:00",
+            "new_end":null
+        }
+    ]
+}
+例：20日は21時までにしてください
+{
+    "tasks":[
+        {
+            "action":"write",
+            "type":"change",
+            "date":"2026-06-20",
+            "old_start":null,
+            "old_end":null,
+            "new_start":null,
+            "new_end":"21:00"
+        }
+    ]
+}
+
+両方変更の場合
+例：20日は18時から22時でお願いします
+{
+    "tasks":[
+        {
+            "action":"write",
+            "type":"change",
+            "date":"2026-06-20",
+            "old_start":null,
+            "old_end":null,
+            "new_start":"18:00",
+            "new_end":"22:00"
+        }
+    ]
 }
 
 
@@ -267,6 +339,72 @@ next_week
 date
 all
 
+例：来週のシフト教えて
+{
+    "tasks":[
+        {
+            "action":"read",
+            "type":"question",
+            "question_type":"schedule",
+            "target":"next_week",
+            "date":null,
+            "content":"来週のシフト"
+        }
+    ]
+}
+例：今日何時からですか？
+{
+    "tasks":[
+        {
+            "action":"read",
+            "type":"question",
+            "question_type":"schedule",
+            "target":"today",
+            "date":null,
+            "content":"今日のシフト"
+        }
+    ]
+}
+例：20日のシフト教えて
+{
+    "tasks":[
+        {
+            "action":"read",
+            "type":"question",
+            "question_type":"schedule",
+            "target":"date",
+            "date":"2026-06-20",
+            "content":"20日のシフト"
+        }
+    ]
+}
+例：今月の給料はいくら？
+{
+    "tasks":[
+        {
+            "action":"read",
+            "type":"question",
+            "question_type":"salary",
+            "target":"all",
+            "date":null,
+            "content":"今月の給与"
+        }
+    ]
+}
+例：今月何回出勤してますか？
+{
+    "tasks":[
+        {
+            "action":"read",
+            "type":"question",
+            "question_type":"count",
+            "target":"all",
+            "date":null,
+            "content":"勤務回数"
+        }
+    ]
+}
+
 
 【その他】
 
@@ -280,6 +418,19 @@ all
     ]
 }
 
+# 判定ルール
+
+・単発の日付指定は schedule
+・曜日のみは preference
+・日付と曜日の両方がある場合は schedule
+・勤務可能時間を含んでも単発の日付なら schedule
+・変更という意味なら change
+・休むという意味なら absence
+・遅れるという意味なら late
+・質問なら question
+・雑談は other
+・「入れない」「出られない」「勤務できない」「休みたい」は absence として扱う
+・1つの文章に複数の日付や内容が含まれる場合は，それぞれ独立した task に分割する
 
 # 注意事項
 
@@ -308,6 +459,8 @@ all
 # 最重要
 
 必ずJSONのみを出力する．
+JSONのキー名は必ず仕様通りに出力すること．
+新しいキーを作らないこと．
 
 必ず以下の形式で出力する．
 
@@ -332,5 +485,9 @@ tasks以外の最上位キーを作らない．
 複数の要求がある場合は tasks に分割する．
 
 推測しない．
+
+入力された文章の意味を分類し最も適切な type を1つ以上選択する．
+
+文章の表現ではなく意味を優先して判断する．
 
 """

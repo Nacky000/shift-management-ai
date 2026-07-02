@@ -1,10 +1,40 @@
 from openai import OpenAI
-from AI.prompts import SHIFTBOT_PROMPT
+from pathlib import Path
+from dotenv import load_dotenv
+import os
 import json
 
-client = OpenAI()
+from Prompts.shiftbot_prompt import SHIFTBOT_PROMPT
 
-def arse_message(user_text):
+# .env読み込み
+env_path = Path(__file__).resolve().parent.parent / "Config" / ".env"
+load_dotenv(env_path)
+
+# OpenAIクライアント
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# デバッグモード
+DEBUG = False
+
+
+def other_task(user_text):
+    """AIが解析できなかった場合のフォールバック"""
+    return {
+        "tasks": [
+            {
+                "action": None,
+                "type": "other",
+                "content": user_text
+            }
+        ]
+    }
+
+
+def parse_message(user_text):
+    """
+    ユーザーのメッセージを解析し、
+    JSON(dict)として返す。
+    """
 
     try:
         response = client.responses.create(
@@ -13,31 +43,22 @@ def arse_message(user_text):
             input=user_text
         )
 
-    except Exception:
-        return {
-            "tasks":[
-                {
-                    "action": None,
-                    "type": "other",
-                    "content": user_text
-                }
-            ]
-        }
+        if DEBUG:
+            print("\n===== AI出力 =====")
+            print(response.output_text)
+            print()
+
+    except Exception as e:
+        if DEBUG:
+            print(f"OpenAI Error: {e}")
+
+        return other_task(user_text)
 
     try:
-        data = json.loads(response.output_text)
+        return json.loads(response.output_text)
 
-    except json.JSONDecodeError:
-        data = {
-            "tasks":[
-                {
-                    "action": None,
-                    "type": "other",
-                    "content": user_text
-                }
-            ]
-        }
+    except json.JSONDecodeError as e:
+        if DEBUG:
+            print(f"JSON Decode Error: {e}")
 
-    print(response.output_text)
-
-    return data
+        return other_task(user_text)
