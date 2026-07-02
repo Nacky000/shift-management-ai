@@ -20,3 +20,9 @@ git add .
 git commit -m "update"
 git push origin main
 ```
+
+## コミット方法
+feat: → 機能追加（今回これ）
+fix: → バグ修正
+refactor: → 設計変更
+chore: → 環境・設定系
