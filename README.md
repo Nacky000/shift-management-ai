@@ -13,5 +13,4 @@ LINE × OpenAI を利用したシフト管理システム
 
 - Python
 - VS Code
-- WSL(Ubuntu)
 - GitHub
