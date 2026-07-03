@@ -33,8 +33,8 @@ def dispatch(task):
     task_type = task.get("type")
 
     # actionが存在しない場合はotherとして処理
-    if action is None:
-        return other_handler(task)
+    # if action is None:
+    #     return other_handler(task)
 
     # typeに対応するhandlerを取得
     # 存在しないtypeの場合はother_handlerを使用
