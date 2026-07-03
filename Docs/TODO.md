@@ -2,19 +2,19 @@
 
 ## 今やること
 
-* [ ] handler設計（各種処理分岐）
-* [ ] spreadsheet.py
 * [ ] LINE → app.py → ai_parser → dispatcher の一連動作確認
 * [ ] handler → spreadsheet.py の連携確認（printベースでOK）
-* [ ] 各typeごとの最終動作テスト（schedule / absence / change など）
+* [ ] 各typeごとの最終動作テスト（schedule / absence / change / late / preference / memo / question）
 
 ---
 
 ## 次にやること
 
 * [ ] Google Sheets API設定（認証・サービスアカウント）
-* [ ] シート書き込み実装（spreadsheet.pyを実API化）
+* [ ] spreadsheet.py をGoogle Sheets API対応に変更
 * [ ] シート構造設計（日付・ユーザー・シフト管理）
+* [ ] question のシート検索処理実装
+* [ ] LINE返信メッセージ整形
 
 ---
 
@@ -33,3 +33,5 @@
 * [x] システムプロンプト設計（ShiftBot）
 * [x] JSONパース設計（ai_parser.py）
 * [x] ルーティング設計（dispatcher.py）
+* [x] handler設計（各type処理）
+* [x] spreadsheet.pyインターフェース作成

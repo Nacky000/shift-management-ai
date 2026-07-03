@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 import json
 
-from Prompts.shiftbot_prompt import SHIFTBOT_PROMPT
+from AI.Prompts.shiftbot_prompt import SHIFTBOT_PROMPT
 
 # .env読み込み
 env_path = Path(__file__).resolve().parent.parent / "Config" / ".env"
@@ -14,7 +14,7 @@ load_dotenv(env_path)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # デバッグモード
-DEBUG = False
+DEBUG = True
 
 
 def other_task(user_text):
@@ -36,9 +36,10 @@ def parse_message(user_text):
     JSON(dict)として返す。
     """
 
+
     try:
         response = client.responses.create(
-            model="gpt-5.5-mini",
+            model="gpt-5.4-mini",
             instructions=SHIFTBOT_PROMPT,
             input=user_text
         )
