@@ -23,7 +23,7 @@ handlers = {
 }
 
 
-def dispatch(task):
+def dispatch(user_id, task):
     """
     1件のtaskを対応するhandlerへ振り分ける
     """
@@ -41,10 +41,10 @@ def dispatch(task):
     handler = handlers.get(task_type, other_handler)
 
     # handlerを実行して結果を返す
-    return handler(task)
+    return handler(user_id, task)
 
 
-def dispatch_tasks(data):
+def dispatch_tasks(user_id, data):
     """
     AIが返したtasksを順番にhandlerへ渡して処理する
     """
@@ -54,7 +54,7 @@ def dispatch_tasks(data):
 
     # tasks内の全てのtaskを順番に処理
     for task in data.get("tasks", []):
-        results.append(dispatch(task))
+        results.append(dispatch(user_id, task))
 
     # 全handlerの実行結果を返す
-    return results
+    return "\n".join(results)

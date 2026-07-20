@@ -10,13 +10,16 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 # .envから秘密情報読む
-from AI.ai_parser import chat
+# from AI.ai_parser import chat
+
+from AI import ai_parser
+from AI import dispatcher
 
 load_dotenv("../Config/.env") # .envの内容をPythonに読み込む
 
 app = Flask(__name__) # Webサーバー本体
 # クライアント作成（環境変数から取得）
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
@@ -27,7 +30,6 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 # LINE APIの初期化
 
 @app.route("/webhook", methods=["POST"])
-
 def webhook():
     # LINEがメッセージ送ってくるURL
     signature = request.headers.get("X-Line-Signature", "") # LINEから来た正規リクエストか確認する署名
@@ -42,20 +44,29 @@ def webhook():
 
 @handler.add(MessageEvent, message=TextMessage) # 「テキストメッセージ来た時だけ実行
 def handle_message(event):
-    text = event.message.text # ユーザーの発言を取得
-    print("受信:", text) # ターミナルに表示する（デバッグ用）
+    # 1. LINE からメッセージと「user_id」を取得する
+    user_id = event.source.user_id
+    text = event.message.text
+    print(f"受信 [User: {user_id}]: {text}") # デバッグ用にIDも表示
 
     try:
-        response = client.responses.create(
-            model="gpt-5.4-mini",
-            instructions=SYSTEM_PROMPT,
-            input=text
-        )
-        ai_text = response.output_text
+        # response = client.responses.create(
+        #     model="gpt-5.4-mini",
+        #     instructions=SYSTEM_PROMPT,
+        #     input=text
+        # )
+        # ai_text = response.output_text
+
+        # ai_parser.py を呼び出して自由記述を構造化（JSON化）する
+        parsed_json = ai_parser.parse_message(text)
+        print("AI解析結果:", parsed_json)
+
+        # dispatcher.py に user_id と 解析結果のJSON を渡して各ハンドラーへルーティング
+        ai_text = dispatcher.dispatch_tasks(user_id, parsed_json)
 
     except Exception as e:
-        print(e)
-        ai_text = "エラーが発生しました"
+        print("エラー発生:", e)
+        ai_text = "処理中にエラーが発生しました．もう一度お試しいただくか，管理者にお問い合わせください．"
 
     line_bot_api.reply_message( # LINEに返信する
         event.reply_token,

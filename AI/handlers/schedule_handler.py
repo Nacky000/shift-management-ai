@@ -2,7 +2,7 @@
 
 from Spreadsheet.spreadsheet import write_schedule
 
-def schedule_handler(task):
+def schedule_handler(user_id,task):
     """
     シフト提出の処理
     """
@@ -19,7 +19,11 @@ def schedule_handler(task):
             "memo": s.get("memo", "")
         })
 
-    return write_schedule(cleaned)
+    # spreadsheet側に user_id も一緒に渡して保存
+    write_schedule(user_id, cleaned)
+
+    # LINE側に返す確認メッセージを返却する
+    return f"【シフト提出】\n{len(cleaned)}件のシフト希望を登録しました．"
 
 # NOTE:
 # - shiftsはAIの出力仕様に依存するため構造変更の可能性あり

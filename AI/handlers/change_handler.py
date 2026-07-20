@@ -2,7 +2,7 @@
 
 from Spreadsheet.spreadsheet import write_change
 
-def change_handler(task):
+def change_handler(user_id,task):
     """
     シフト変更の処理
     """
@@ -15,4 +15,9 @@ def change_handler(task):
         "new_end": task.get("new_end")
     }
 
-    return write_change(cleaned)
+    # user_id と 整形済みデータ(cleaned) をスプレッドシートへ渡す
+    write_change(user_id, cleaned)
+
+    # LINE側に返す確認メッセージ
+    date_str = cleaned["date"] if cleaned["date"] else "指定日"
+    return f"【シフト変更】\n{date_str}のシフト変更申請（{cleaned['old_start']}➔{cleaned['new_start']}など）を受け付けました．"
