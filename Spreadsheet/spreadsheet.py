@@ -14,9 +14,19 @@ SCOPES = [
 
 SERVICE_ACCOUNT_FILE = "Config/service_account.json"
 
+# Google Drive上の保存先フォルダID
+DRIVE_FOLDER_ID = "1L5odcJ7WSSM776cEX0FSySGxAfmYCNb2?ths=true"
+
 # スタッフ管理用Spreadsheet
 USER_SPREADSHEET_NAME = "ShiftBot_Users"
 USER_SHEET_NAME = "Users"
+
+# 月別Spreadsheetのシート名
+SHIFT_SHEET_NAMES = [
+    "シフト希望",
+    "シフト調整",
+    "確定シフト",
+]
 
 
 # =========================
@@ -85,13 +95,14 @@ def get_active_users():
     return active_users
 
 
+
 def create_monthly_spreadsheet(year, month):
     """
-    月別のGoogle Spreadsheetを作成する
+    月別のGoogle Spreadsheetを取得する。
+    存在しなければ指定フォルダに作成する。
     """
 
     client = get_client()
-
     spreadsheet_name = f"ShiftBot_{year}_{month:02d}"
 
     try:
@@ -99,30 +110,38 @@ def create_monthly_spreadsheet(year, month):
         print(f"{spreadsheet_name} は既に存在します。")
 
     except gspread.SpreadsheetNotFound:
-        spreadsheet = client.create(spreadsheet_name)
+        spreadsheet = client.create(
+            spreadsheet_name,
+            folder_id=DRIVE_FOLDER_ID
+        )
         print(f"{spreadsheet_name} を作成しました。")
 
     return spreadsheet
 
 
-def get_monthly_worksheet(spreadsheet, year, month):
+
+def get_monthly_worksheets(spreadsheet):
     """
-    月別Spreadsheet内のシフト用Worksheetを取得する
+    月別Spreadsheetの3シートを取得する。
+    存在しないシートは新規作成する。
     """
 
-    sheet_name = f"{month}月シフト"
+    worksheets = {}
 
-    try:
-        worksheet = spreadsheet.worksheet(sheet_name)
+    for sheet_name in SHIFT_SHEET_NAMES:
+        try:
+            worksheet = spreadsheet.worksheet(sheet_name)
 
-    except gspread.WorksheetNotFound:
-        worksheet = spreadsheet.add_worksheet(
-            title=sheet_name,
-            rows=100,
-            cols=40
-        )
+        except gspread.WorksheetNotFound:
+            worksheet = spreadsheet.add_worksheet(
+                title=sheet_name,
+                rows=100,
+                cols=40
+            )
 
-    return worksheet
+        worksheets[sheet_name] = worksheet
+
+    return worksheets
 
 
 def create_date_headers(year, month):
@@ -185,61 +204,71 @@ def column_letter(number):
 
 def create_monthly_template(year, month):
     """
-    月別シフトSpreadsheetを作成し、
-    日付・曜日・スタッフを自動生成する
+    月別Spreadsheetを作成し、
+    3シートの初期レイアウトを準備する。
     """
 
-    # 月別Spreadsheet
     spreadsheet = create_monthly_spreadsheet(
         year,
         month
     )
 
-    # 月別Worksheet
-    worksheet = get_monthly_worksheet(
-        spreadsheet,
-        year,
-        month
-    )
+    worksheets = get_monthly_worksheets(spreadsheet)
 
-    # 日付・曜日
-    dates, weekdays = create_date_headers(
-        year,
-        month
-    )
+    dates, weekdays = create_date_headers(year, month)
 
-    # 最終列
     last_column = column_letter(len(dates) + 1)
 
-    # 1行目：日付
-    worksheet.update(
-        range_name=f"A1:{last_column}1",
-        values=[
-            ["スタッフ"] + dates
-        ]
-    )
+    users = get_active_users()
+    staff_names = [
+        user["name"]
+        for user in users
+        if user.get("name")
+    ]
 
-    # 2行目：曜日
-    worksheet.update(
-        range_name=f"A2:{last_column}2",
-        values=[
-            ["曜日"] + weekdays
-        ]
-    )
+    for sheet_name, worksheet in worksheets.items():
 
-    # スタッフ
-    create_staff_rows(worksheet)
+        # 1行目：日付
+        worksheet.update(
+            range_name=f"A1:{last_column}1",
+            values=[["スタッフ"] + dates]
+        )
 
-    # 見やすくする
-    worksheet.freeze_rows(2)
-    worksheet.freeze_columns(1)
+        # 2行目：曜日
+        worksheet.update(
+            range_name=f"A2:{last_column}2",
+            values=[["曜日"] + weekdays]
+        )
+
+        # 3行目以降：スタッフ名
+        if staff_names:
+            worksheet.update(
+                range_name=f"A3:A{2 + len(staff_names)}",
+                values=[[name] for name in staff_names]
+            )
+
+        worksheet.freeze_rows(2)
+        worksheet.freeze_columns(1)
 
     print(
-        f"{year}年{month}月のシフト表を作成しました。"
+        f"{year}年{month}月のシフト表を準備しました。"
     )
 
 
 ###
+
+def write_schedule(user_id, task):
+    """
+    LINEから受け取ったシフト希望を
+    対象月の「シフト希望」に保存する。
+    """
+    # 1. user_id からスタッフを特定する
+    # 2. task から日付・勤務時間を取得する
+    # 3. 対象月のSpreadsheetを取得する
+    # 4. 「シフト希望」の対象セルを特定する
+    # 5. 初回提出か更新かを判定する
+    # 6. 値を書き込み、緑色または黄色にする
+    pass
 
 def write_change(user_id, task):
     """シフト変更を書き込む"""
