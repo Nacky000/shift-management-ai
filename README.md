@@ -106,24 +106,24 @@ Google Sheets API
 
 | コンポーネント | 役割 |
 |---|---|
-| `LINE/app.py` | Webhook の受信、ユーザー登録・利用状態の確認、処理の呼び出し、返信 |
+| `LINE/app.py` | Webhook の受信，ユーザー登録・利用状態の確認，処理の呼び出し，返信 |
 | `AI/ai_parser.py` | OpenAI API を利用した自然言語解析と JSON への変換 |
 | `AI/dispatcher.py` | 解析結果に応じた処理の振り分け |
-| `AI/handlers/` | シフト登録・変更、欠勤・遅刻連絡など、業務別の処理 |
-| `Spreadsheet/spreadsheet.py` | Google Sheets API との連携、シフト情報とユーザー情報の管理 |
-| `Config/` | API 認証情報や環境変数、依存ライブラリの管理 |
+| `AI/handlers/` | シフト登録・変更、欠勤・遅刻連絡など，業務別の処理 |
+| `Spreadsheet/spreadsheet.py` | Google Sheets API との連携，シフト情報とユーザー情報の管理 |
+| `Config/` | API 認証情報や環境変数，依存ライブラリの管理 |
 
 ## 技術スタック
 
 | 分類 | 技術 |
 |---|---|
 | 言語 | Python |
-| LLM | OpenAI API（GPT-5 mini 系モデル） |
+| LLM | OpenAI API（gpt-5.4-mini 系モデル） |
 | メッセージング | LINE Messaging API |
 | データ管理 | Google Sheets API |
 | Web フレームワーク | Flask |
-| 開発環境 | Visual Studio Code、WSL |
-| バージョン管理 | Git、GitHub |
+| 開発環境 | Visual Studio Code，WSL |
+| バージョン管理 | Git，GitHub |
 
 ## 設計上の工夫
 
