@@ -12,12 +12,12 @@ PYTHONPATH=. python3 LINE/app.py -->
 
 ターミナル1
 ```bash
-python3 LINE/app.py
+python .\LINE\app.py
 ```
 ターミナル2
 ```bash
 cd /mnt/c/Myprojects/shift-management-ai/Tools
-./ngrok http 10.160.65.252:5000
+ngrok http 5000
 ```
 
 ## Git操作

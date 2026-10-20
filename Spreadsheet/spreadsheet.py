@@ -15,7 +15,7 @@ SCOPES = [
 SERVICE_ACCOUNT_FILE = "Config/service_account.json"
 
 # Google Drive上の保存先フォルダID
-DRIVE_FOLDER_ID = "1L5odcJ7WSSM776cEX0FSySGxAfmYCNb2?ths=true"
+DRIVE_FOLDER_ID = "1L5odcJ7WSSM776cEX0FSySGxAfmYCNb2"
 
 # スタッフ管理用Spreadsheet
 USER_SPREADSHEET_NAME = "ShiftBot_Users"
@@ -251,7 +251,7 @@ def create_monthly_template(year, month):
         worksheet.freeze_columns(1)
 
     print(
-        f"{year}年{month}月のシフト表を準備しました。"
+        f"{year}年{month}月のシフト表を準備しました"
     )
 
 
@@ -260,15 +260,131 @@ def create_monthly_template(year, month):
 def write_schedule(user_id, task):
     """
     LINEから受け取ったシフト希望を
-    対象月の「シフト希望」に保存する。
+    対象月の「シフト希望」シートに保存する
+
+    taskの形式:
+    {
+        "date": "2026-10-25",
+        "start_time": "18:00",
+        "end_time": "22:00"
+    }
     """
-    # 1. user_id からスタッフを特定する
-    # 2. task から日付・勤務時間を取得する
-    # 3. 対象月のSpreadsheetを取得する
-    # 4. 「シフト希望」の対象セルを特定する
-    # 5. 初回提出か更新かを判定する
-    # 6. 値を書き込み、緑色または黄色にする
-    pass
+
+    # 1. 日付・勤務時間を取得
+    date_value = task.get("date")
+    start_time = task.get("start_time") or task.get("start")
+    end_time = task.get("end_time") or task.get("end")
+
+    if not date_value or not start_time or not end_time:
+        raise ValueError(
+            "日付・開始時刻・終了時刻が必要です"
+        )
+
+    if isinstance(date_value, date):
+        shift_date = date_value
+    else:
+        shift_date = date.fromisoformat(str(date_value))
+
+    year = shift_date.year
+    month = shift_date.month
+    date_header = f"{month}/{shift_date.day}"
+
+    # 2. ユーザーIDから有効なスタッフを特定
+    users = get_active_users()
+
+    user = next(
+        (
+            u for u in users
+            if str(u["user_id"]).strip() == str(user_id).strip()
+        ),
+        None
+    )
+
+    if not user or not user.get("name"):
+        raise ValueError(
+            "ユーザーが登録されていないか、有効ではありません"
+        )
+
+    staff_name = user["name"]
+
+    # 3. 月別シフト表を準備
+    create_monthly_template(year, month)
+
+    spreadsheet = create_monthly_spreadsheet(year, month)
+    worksheets = get_monthly_worksheets(spreadsheet)
+    worksheet = worksheets["シフト希望"]
+
+    # 4. スタッフの行を探す（A列、3行目以降）
+    staff_names = worksheet.col_values(1)
+
+    staff_row = next(
+        (
+            row
+            for row, name in enumerate(staff_names, start=1)
+            if row >= 3 and name.strip() == staff_name
+        ),
+        None
+    )
+
+    if staff_row is None:
+        raise ValueError(
+            f"シフト表にスタッフが見つかりません: {staff_name}"
+        )
+
+    # 5. 日付の列を探す（1行目）
+    headers = worksheet.row_values(1)
+
+    date_column = next(
+        (
+            col
+            for col, value in enumerate(headers, start=1)
+            if col >= 2 and value == date_header
+        ),
+        None
+    )
+
+    if date_column is None:
+        raise ValueError(
+            f"シフト表に日付が見つかりません: {date_header}"
+        )
+
+    # 6. 初回登録か更新かを判定
+    cell = f"{column_letter(date_column)}{staff_row}"
+    old_value = worksheet.cell(staff_row, date_column).value
+
+    if old_value:
+        color = {
+            "red": 1.0,
+            "green": 0.95,
+            "blue": 0.65
+        }
+        status = "更新"
+    else:
+        color = {
+            "red": 0.75,
+            "green": 0.90,
+            "blue": 0.75
+        }
+        status = "新規"
+
+    # 7. 書き込みと色付け
+    worksheet.update_cell(
+        staff_row,
+        date_column,
+        f"{start_time}~{end_time}"
+    )
+
+    worksheet.format(
+        cell,
+        {"backgroundColor": color}
+    )
+
+    print(
+        f"{status}: {staff_name} / "
+        f"{shift_date} / {start_time}~{end_time}"
+    )
+
+    return f"{shift_date.month}/{shift_date.day}のシフト希望を登録しました"
 
 def write_change(user_id, task):
     """シフト変更を書き込む"""
