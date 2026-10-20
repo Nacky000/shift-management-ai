@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 # .envから秘密情報読む
 # from AI.ai_parser import chat
+from Spreadsheet import spreadsheet
 
 from AI import ai_parser
 from AI import dispatcher
@@ -50,6 +51,51 @@ def handle_message(event):
     print(f"受信 [User: {user_id}]: {text}") # デバッグ用にIDも表示
 
     try:
+        # 登録状態を確認
+        status = spreadsheet.get_user_status(user_id)
+
+        # 未登録ならLINEプロフィールを取得して登録
+        if status is None:
+            try:
+                profile = line_bot_api.get_profile(user_id)
+                line_name = profile.display_name
+            except Exception as e:
+                print("LINEプロフィール取得エラー:", e)
+                line_name = "取得できませんでした"
+
+            spreadsheet.register_user(user_id, line_name)
+
+            # 登録直後は確認中として扱う
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text=(
+                        "初回登録を受け付けました！\n"
+                        "現在、店長の確認待ちです。\n"
+                        "有効化されるとシフト登録を利用できます。"
+                    )
+                )
+            )
+            return
+
+        # 状態に応じて利用可否を判定
+        if status == "確認中":
+            reply_text = (
+                "現在、店長の確認待ちです。\n"
+                "有効化されるまでお待ちください。"
+            )
+
+        elif status == "無効":
+            reply_text = (
+                "現在、このアカウントは利用できません。\n"
+                "店長にお問い合わせください。"
+            )
+
+        elif status != "有効":
+            reply_text = (
+                "アカウントの状態を確認できません。\n"
+                "店長にお問い合わせください。"
+            )
         # response = client.responses.create(
         #     model="gpt-5.4-mini",
         #     instructions=SYSTEM_PROMPT,
@@ -58,19 +104,21 @@ def handle_message(event):
         # ai_text = response.output_text
 
         # ai_parser.py を呼び出して自由記述を構造化（JSON化）する
-        parsed_json = ai_parser.parse_message(text)
-        print("AI解析結果:", parsed_json)
+        else:
+            parsed_json = ai_parser.parse_message(text)
+            print("AI解析結果:", parsed_json)
 
-        # dispatcher.py に user_id と 解析結果のJSON を渡して各ハンドラーへルーティング
-        ai_text = dispatcher.dispatch_tasks(user_id, parsed_json)
+            # dispatcher.py に user_id と 解析結果のJSON を渡して各ハンドラーへルーティング
+            ai_text = dispatcher.dispatch_tasks(user_id, parsed_json)
+            reply_text = ai_text
 
     except Exception as e:
         print("エラー発生:", e)
-        ai_text = "処理中にエラーが発生しました．もう一度お試しいただくか，管理者にお問い合わせください．"
+        reply_text = "処理中にエラーが発生しました．もう一度お試しいただくか，管理者にお問い合わせください．"
 
     line_bot_api.reply_message( # LINEに返信する
         event.reply_token,
-        TextSendMessage(text=ai_text)
+        TextSendMessage(text=reply_text)
     )
 
 if __name__ == "__main__":

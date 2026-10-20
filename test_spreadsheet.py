@@ -6,8 +6,10 @@ if __name__ == "__main__":
     task = {
         "date": "2026-10-25",
         "start_time": "18:00",
-        "end_time": "22:00"
+        "end_time": "21:00"
     }
 
     result = spreadsheet.write_schedule(user_id, task)
     print(result)
+
+# spreadsheet.setup_user_status_dropdown()
