@@ -1,8 +1,6 @@
-# dispatcher.py 
+import logging
 
-# 各typeに対応するhandlerを読み込む
-from AI.handlers.schedule_handler import schedule_handler
-from AI.handlers.change_handler import change_handler
+from AI.handlers.shift_handler import shift_handler
 from AI.handlers.absence_handler import absence_handler
 from AI.handlers.late_handler import late_handler
 from AI.handlers.preference_handler import preference_handler
@@ -10,51 +8,75 @@ from AI.handlers.question_handler import question_handler
 from AI.handlers.memo_handler import memo_handler
 from AI.handlers.other_handler import other_handler
 
-# typeごとに呼び出すhandlerを管理
-handlers = {
-    "schedule": schedule_handler,
-    "change": change_handler,
+logger = logging.getLogger(__name__)
+
+ERROR_REPLY = (
+    "処理中にエラーが起きました．"
+    "お手数ですが，もう一度送るか，店長に連絡してください．"
+)
+
+HANDLERS = {
+    "shift": shift_handler,
     "absence": absence_handler,
     "late": late_handler,
     "preference": preference_handler,
     "question": question_handler,
     "memo": memo_handler,
-    "other": other_handler
+    "other": other_handler,
+}
+
+# type ごとに許可する action(プロンプトの定義と一致させる)
+EXPECTED_ACTION = {
+    "shift": "write",
+    "absence": "write",
+    "late": "write",
+    "preference": "write",
+    "memo": "write",
+    "question": "read",
+    "other": None,
 }
 
 
 def dispatch(user_id, task):
-    """
-    1件のtaskを対応するhandlerへ振り分ける
-    """
-    
-    # actionとtypeを取得
-    action = task.get("action")
+    """1件のtaskを対応するhandlerへ振り分け、返信文を返す。"""
     task_type = task.get("type")
+    action = task.get("action")
 
-    # actionが存在しない場合はotherとして処理
-    # if action is None:
-    #     return other_handler(task)
+    handler = HANDLERS.get(task_type)
+    if handler is None:
+        logger.error("Unknown task type: %r", task)
+        return ERROR_REPLY
 
-    # typeに対応するhandlerを取得
-    # 存在しないtypeの場合はother_handlerを使用
-    handler = handlers.get(task_type, other_handler)
+    if action != EXPECTED_ACTION[task_type]:
+        logger.error("Invalid action for %s: %r", task_type, task)
+        return ERROR_REPLY
 
-    # handlerを実行して結果を返す
-    return handler(user_id, task)
+    try:
+        return handler(user_id, task)
+    except Exception:
+        logger.exception("Handler failed: type=%s", task_type)
+        return ERROR_REPLY
 
 
 def dispatch_tasks(user_id, data):
     """
-    AIが返したtasksを順番にhandlerへ渡して処理する
+    ai_parser の結果を順に処理し、返信文を1つにまとめる。
+    data は {"tasks": [...]} の dict でも、tasks の list でも受け付ける。
     """
+    tasks = data.get("tasks") if isinstance(data, dict) else data
 
-    # handlerの実行結果を格納するリスト
+    if not isinstance(tasks, list):
+        logger.error("tasks is not a list: %r", tasks)
+        return ERROR_REPLY
+
     results = []
+    for task in tasks:
+        if not isinstance(task, dict):
+            logger.error("Invalid task: %r", task)
+            results.append(ERROR_REPLY)
+            continue
+        result = dispatch(user_id, task)
+        if result:
+            results.append(str(result))
 
-    # tasks内の全てのtaskを順番に処理
-    for task in data.get("tasks", []):
-        results.append(dispatch(user_id, task))
-
-    # 全handlerの実行結果を返す
     return "\n".join(results)

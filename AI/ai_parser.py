@@ -24,7 +24,8 @@ def other_task(user_text):
             {
                 "action": None,
                 "type": "other",
-                "content": user_text
+                "content": user_text,
+                "ambiguity": []
             }
         ]
     }
@@ -56,10 +57,30 @@ def parse_message(user_text):
         return other_task(user_text)
 
     try:
-        return json.loads(response.output_text)
+        result = json.loads(response.output_text)
 
-    except json.JSONDecodeError as e:
+        # 最上位の形式を確認
+        if not isinstance(result, dict):
+            raise ValueError("出力がJSONオブジェクトではありません")
+
+        if not isinstance(result.get("tasks"), list):
+            raise ValueError("tasksが配列ではありません")
+
+        # 各taskの最低限の形式を確認
+        for task in result["tasks"]:
+            if not isinstance(task, dict):
+                raise ValueError("taskがオブジェクトではありません")
+
+            if not all(key in task for key in ("action", "type", "ambiguity")):
+                raise ValueError("taskに必須キーがありません")
+
+            if not isinstance(task["ambiguity"], list):
+                raise ValueError("ambiguityが配列ではありません")
+
+        return result
+
+    except (json.JSONDecodeError, ValueError) as e:
         if DEBUG:
-            print(f"JSON Decode Error: {e}")
+            print(f"JSON Format Error: {e}")
 
         return other_task(user_text)
