@@ -24,7 +24,7 @@ class TestShiftHandler(unittest.TestCase):
         for date_str, start, end in test_cases:
             with self.subTest(date=date_str):
                 task = {
-                    "date_resolved": date_str,
+                    "date": date_str,
                     "date_written": date_str,
                     "start": start,
                     "end": end,
@@ -49,7 +49,7 @@ class TestShiftHandler(unittest.TestCase):
             {
                 "action": "write",
                 "type": "shift",
-                "date_resolved": date_str,
+                "date": date_str,
                 "start": start,
                 "end": end,
                 "ambiguity": [],
@@ -82,7 +82,7 @@ class TestShiftHandler(unittest.TestCase):
         self.assertEqual(len(received), 6)
         self.assertEqual(result.splitlines(), ["テスト成功"] * 6)
         self.assertEqual(
-            [task["date_resolved"] for task in received],
+            [task["date"] for task in received],
             [
                 "2026-11-02",
                 "2026-11-05",

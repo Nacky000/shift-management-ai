@@ -1,5 +1,7 @@
 import logging
 
+from AI.date_resolver import resolve_task_dates
+
 from AI.handlers.shift_handler import shift_handler
 from AI.handlers.absence_handler import absence_handler
 from AI.handlers.late_handler import late_handler
@@ -36,9 +38,9 @@ EXPECTED_ACTION = {
     "other": None,
 }
 
-
 def dispatch(user_id, task):
-    """1件のtaskを対応するhandlerへ振り分け、返信文を返す。"""
+    """1件のtaskを対応するhandlerへ振り分け返信文を返す"""
+
     task_type = task.get("type")
     action = task.get("action")
 
@@ -60,9 +62,11 @@ def dispatch(user_id, task):
 
 def dispatch_tasks(user_id, data):
     """
-    ai_parser の結果を順に処理し、返信文を1つにまとめる。
-    data は {"tasks": [...]} の dict でも、tasks の list でも受け付ける。
+    AIの解析結果を受け取り日付を一括変換してから，各handlerで処理し返信文をまとめる
     """
+    # 日付を一括変換
+    data = resolve_task_dates(data)
+
     tasks = data.get("tasks") if isinstance(data, dict) else data
 
     if not isinstance(tasks, list):
@@ -70,12 +74,24 @@ def dispatch_tasks(user_id, data):
         return ERROR_REPLY
 
     results = []
+
     for task in tasks:
         if not isinstance(task, dict):
             logger.error("Invalid task: %r", task)
             results.append(ERROR_REPLY)
             continue
+
+        # 日付を解決できなかった場合は登録処理を行わない
+        date_error = task.get("date_error")
+        if date_error:
+            results.append(
+                f"【日付の確認】\n{date_error}\n"
+                "何月何日か確認して，もう一度送ってください．"
+            )
+            continue
+
         result = dispatch(user_id, task)
+
         if result:
             results.append(str(result))
 

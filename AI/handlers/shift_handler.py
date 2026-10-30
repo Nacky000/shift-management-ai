@@ -32,18 +32,17 @@ def check_shift(task, today=None):
     Parameters
     ----------
     task : dict
-        normalize_tasks 通過後のタスク。
-        date_resolved: YYYY-MM-DD または None
-        date_written: 元の日付表現
+        resolve_task_dates 通過後のタスク
+        date: YYYY-MM-DD または None
+        date_error: 日付を解決できなかった理由
     today : datetime.date, optional
-        テスト時に使用する基準日。
+        テスト時に使用する基準日
         指定しなければ today_jst() を使用する。
     """
     questions = []
 
     today = today or today_jst()
-
-    resolved = task.get("date_resolved")
+    resolved = task.get("date")
     ambiguity = task.get("ambiguity") or []
     change_hint = task.get("change_hint") is True
 
@@ -129,7 +128,7 @@ def shift_handler(user_id, task):
     if questions:
         return "【確認】\n" + "\n".join(questions)
 
-    date_str = task["date_resolved"]
+    date_str = task["date"]
     new_start = task.get("start")
     new_end = task.get("end")
     old_start = task.get("old_start")
