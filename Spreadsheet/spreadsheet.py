@@ -1089,21 +1089,45 @@ def write_preference(user_id, task):
     return "固定希望を記録しました。"
 
 
-# def write_memo(user_id, task):
-#     """メモを書き込む"""
-#     sheet = get_monthly_sheet(
-#         int(year),
-#         int(month),
-#         ""
-#     )
-#     sheet.append_row([user_id, "memo", task.get("content", "")])
+def write_memo(user_id, task):
+    """メモを「勤務連絡」シートに記録する"""
+
+    now = datetime.now()
+    year = int(task.get("year") or now.year)
+    month = int(task.get("month") or now.month)
+
+    sheet = get_monthly_sheet(year, month, "勤務連絡")
+    staff_name = get_staff_name(user_id)
+
+    row_number = len(sheet.get_all_values()) + 1
+
+    sheet.append_row([
+        user_id,
+        staff_name,
+        "メモ",
+        task.get("date") or "",
+        "",
+        "",
+        task.get("content") or "",
+        now.strftime("%Y-%m-%d %H:%M:%S"),
+        False,
+    ])
+
+    return "メモを記録しました"
 
 
-# def read_question(user_id, task):
-#     """質問内容に応じてシフト情報などを取得する"""
-#     sheet = get_monthly_sheet(
-#         int(year),
-#         int(month),
-#         "シフト申請"
-#     )
-#     return sheet.get_all_records()
+def read_question(user_id, task):
+    """指定された月のシフト申請記録を取得する"""
+
+    year, month = get_target_month(task)
+    sheet = get_monthly_sheet(year, month, "シフト申請")
+
+    records = sheet.get_all_records()
+
+    # 呼び出し元のユーザー自身の記録に限定する
+    return [
+        record
+        for record in records
+        if str(record.get("user_id", "")).strip()
+        == str(user_id).strip()
+    ]

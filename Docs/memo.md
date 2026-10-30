@@ -12,11 +12,12 @@ PYTHONPATH=. python3 LINE/app.py -->
 
 ターミナル1
 ```bash
-python .\LINE\app.py
+python -m LINE.app
 ```
 ターミナル2
 ```bash
-cd /mnt/c/Myprojects/shift-management-ai/Tools
+# cd /mnt/c/Myprojects/shift-management-ai/Tools
+cd Tools
 ngrok http 5000
 ```
 

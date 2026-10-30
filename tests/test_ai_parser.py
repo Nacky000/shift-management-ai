@@ -1,77 +1,53 @@
+# OpenAI APIを実際には呼び出さずにシフト提出の解析結果を正しく読み取れるかテスト
 import json
-from unittest.mock import Mock
+import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
-from AI import ai_parser
-
-
-def mock_openai_response(monkeypatch, output_text):
-    """OpenAI Responses APIの応答を模擬する"""
-    response = Mock()
-    response.output_text = output_text
-
-    monkeypatch.setattr(
-        ai_parser.client.responses,
-        "create",
-        Mock(return_value=response),
-    )
+from AI.ai_parser import parse_message
 
 
-def test_parse_schedule_message(monkeypatch):
-    """シフト入力が期待するtasks形式になるか"""
-    expected = {
-        "tasks": [
+class TestAIParser(unittest.TestCase):
+
+    def test_parse_six_shift_tasks(self):
+        expected_tasks = [
             {
                 "action": "write",
                 "type": "shift",
-                "date": "2026-10-28",
-                "start_time": "18:00",
-                "end_time": "22:00",
+                "date": f"2026-11-{day:02d}",
+                "start": start,
+                "end": end,
                 "ambiguity": [],
             }
+            for day, start, end in [
+                (2, "11:00", "16:00"),
+                (5, "11:00", "15:00"),
+                (12, "11:00", "15:00"),
+                (18, "11:00", "15:00"),
+                (26, "11:00", "15:00"),
+                (27, "11:00", "13:00"),
+            ]
         ]
-    }
 
-    mock_openai_response(
-        monkeypatch,
-        json.dumps(expected, ensure_ascii=False),
-    )
+        fake_response = SimpleNamespace(
+            output_text=json.dumps(
+                {"tasks": expected_tasks},
+                ensure_ascii=False,
+            )
+        )
 
-    result = ai_parser.parse_message("10月28日 18時から22時まで")
+        with patch(
+            "AI.ai_parser.client.responses.create",
+            return_value=fake_response,
+        ) as mock_create:
+            result = parse_message(
+                "11月のシフト希望（テスト用メッセージ）"
+            )
 
-    assert result == expected
-    assert isinstance(result, dict)
-    assert isinstance(result["tasks"], list)
-    assert result["tasks"][0]["type"] == "shift"
-    assert result["tasks"][0]["action"] == "write"
-
-
-def test_parse_invalid_json_returns_other_task(monkeypatch):
-    """AIが不正なJSONを返したらotherにフォールバックする"""
-    mock_openai_response(monkeypatch, "これはJSONではありません")
-
-    result = ai_parser.parse_message("テストメッセージ")
-
-    assert result == {
-        "tasks": [
-            {
-                "action": None,
-                "type": "other",
-                "content": "テストメッセージ",
-                "ambiguity": [],
-            }
-        ]
-    }
+        mock_create.assert_called_once()
+        self.assertEqual(len(result["tasks"]), 6)
+        self.assertEqual(result["tasks"], expected_tasks)
 
 
-def test_parse_api_error_returns_other_task(monkeypatch):
-    """OpenAI APIで例外が起きた場合もotherにフォールバックする"""
-    monkeypatch.setattr(
-        ai_parser.client.responses,
-        "create",
-        Mock(side_effect=Exception("API error")),
-    )
-
-    result = ai_parser.parse_message("テストメッセージ")
-
-    assert result["tasks"][0]["type"] == "other"
-    assert result["tasks"][0]["content"] == "テストメッセージ"
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

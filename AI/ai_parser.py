@@ -54,7 +54,9 @@ def parse_message(user_text):
         if DEBUG:
             print(f"OpenAI Error: {e}")
 
-        return other_task(user_text)
+        raise RuntimeError(
+            "OpenAI APIによるメッセージ解析に失敗しました"
+        ) from e
 
     try:
         result = json.loads(response.output_text)
@@ -79,8 +81,10 @@ def parse_message(user_text):
 
         return result
 
-    except (json.JSONDecodeError, ValueError) as e:
+    except Exception as e:
         if DEBUG:
-            print(f"JSON Format Error: {e}")
+            print(f"OpenAI Error: {e}")
 
-        return other_task(user_text)
+        raise RuntimeError(
+            "OpenAI APIによるメッセージ解析に失敗しました"
+        ) from e
