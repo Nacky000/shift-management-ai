@@ -43,6 +43,8 @@ def webhook():
 
     return "OK" # LINEに「受け取ったよ」と返す
 
+
+
 @handler.add(MessageEvent, message=TextMessage) # 「テキストメッセージ来た時だけ実行
 def handle_message(event):
     # 1. LINE からメッセージと「user_id」を取得する
@@ -63,52 +65,47 @@ def handle_message(event):
                 print("LINEプロフィール取得エラー:", e)
                 line_name = "取得できませんでした"
 
-            spreadsheet.register_user(user_id, line_name)
+            registered = spreadsheet.register_user(user_id, line_name)
 
-            # 登録直後は確認中として扱う
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(
-                    text=(
-                        "初回登録を受け付けました！\n"
-                        "現在、店長の確認待ちです。\n"
-                        "有効化されるとシフト登録を利用できます。"
+            if registered:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(
+                        text=(
+                            "初回登録を受け付けました！\n"
+                            "現在，店長の確認待ちです．\n"
+                            "有効化されるとシフト登録を利用できます．"
+                        )
                     )
                 )
-            )
-            return
+                return
+
+            # 登録処理が失敗した場合は，登録状態を再取得して通常の判定へ
+            status = spreadsheet.get_user_status(user_id)
 
         # 状態に応じて利用可否を判定
         if status == "確認中":
             reply_text = (
-                "現在、店長の確認待ちです。\n"
-                "有効化されるまでお待ちください。"
+                "現在，店長の確認待ちです．\n"
+                "有効化されるまでお待ちください．"
             )
 
         elif status == "無効":
             reply_text = (
-                "現在、このアカウントは利用できません。\n"
-                "店長にお問い合わせください。"
+                "現在，このアカウントは利用できません．\n"
+                "店長にお問い合わせください．"
             )
 
         elif status != "有効":
             reply_text = (
-                "アカウントの状態を確認できません。\n"
-                "店長にお問い合わせください。"
+                "アカウントの状態を確認できません．\n"
+                "店長にお問い合わせください．"
             )
-        # response = client.responses.create(
-        #     model="gpt-5.4-mini",
-        #     instructions=SYSTEM_PROMPT,
-        #     input=text
-        # )
-        # ai_text = response.output_text
 
-        # ai_parser.py を呼び出して自由記述を構造化（JSON化）する
         else:
             parsed_json = ai_parser.parse_message(text)
             print("AI解析結果:", parsed_json)
 
-            # dispatcher.py に user_id と 解析結果のJSON を渡して各ハンドラーへルーティング
             ai_text = dispatcher.dispatch_tasks(user_id, parsed_json)
             reply_text = ai_text
 
