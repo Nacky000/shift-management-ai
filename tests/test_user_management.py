@@ -122,3 +122,79 @@ def test_register_user_duplicate_with_whitespace(fake_worksheet):
 
     assert result is False
     assert len(fake_worksheet.appended_rows) == 0
+
+
+# -----------------------------
+# get_active_users() のテスト
+# -----------------------------
+
+def test_get_active_users(fake_worksheet):
+    """有効ユーザーだけを取得できる"""
+
+    fake_worksheet.records.extend([
+        {
+            "user_id": "U001",
+            "LINE表示名": "ユーザー1",
+            "名前": "田中",
+            "状態": "有効",
+        },
+        {
+            "user_id": "U002",
+            "LINE表示名": "ユーザー2",
+            "名前": "佐藤",
+            "状態": "確認中",
+        },
+        {
+            "user_id": "U003",
+            "LINE表示名": "ユーザー3",
+            "名前": "鈴木",
+            "状態": "無効",
+        },
+    ])
+
+    result = spreadsheet.get_active_users()
+
+    assert len(result) == 1
+    assert result[0]["user_id"] == "U001"
+
+
+def test_get_active_users_excludes_pending(fake_worksheet):
+    """確認中ユーザーを除外する"""
+
+    fake_worksheet.records.extend([
+        {
+            "user_id": "U001",
+            "LINE表示名": "ユーザー1",
+            "名前": "田中",
+            "状態": "確認中",
+        },
+    ])
+
+    result = spreadsheet.get_active_users()
+
+    assert result == []
+
+
+def test_get_active_users_excludes_disabled(fake_worksheet):
+    """無効ユーザーを除外する"""
+
+    fake_worksheet.records.extend([
+        {
+            "user_id": "U001",
+            "LINE表示名": "ユーザー1",
+            "名前": "田中",
+            "状態": "無効",
+        },
+    ])
+
+    result = spreadsheet.get_active_users()
+
+    assert result == []
+
+
+def test_get_active_users_empty(fake_worksheet):
+    """ユーザーがいない場合は空リストを返す"""
+
+    result = spreadsheet.get_active_users()
+
+    assert result == []

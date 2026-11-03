@@ -32,7 +32,7 @@ class TestShiftHandler(unittest.TestCase):
                     "change_hint": False,
                 }
 
-                questions = check_shift(
+                questions, warnings = check_shift(
                     task,
                     today=date(2026, 10, 27),
                 )
@@ -40,7 +40,13 @@ class TestShiftHandler(unittest.TestCase):
                 self.assertEqual(
                     questions,
                     [],
-                    f"{date_str}: {questions}",
+                    f"{date_str}: questions={questions}",
+                )
+
+                self.assertEqual(
+                    warnings,
+                    [],
+                    f"{date_str}: warnings={warnings}",
                 )
 
     def test_dispatch_six_tasks_without_writing(self):

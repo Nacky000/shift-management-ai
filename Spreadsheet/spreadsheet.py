@@ -356,7 +356,7 @@ def setup_application_sheet(sheet):
 
     if not headers:
         sheet.update(
-            range_name="A1:O1",
+            range_name="A1:P1",
             values=[APPLICATION_HEADERS],
         )
     elif headers[:len(APPLICATION_HEADERS)] != APPLICATION_HEADERS:
@@ -390,7 +390,7 @@ def setup_application_sheet(sheet):
     })
 
     sheet.format(
-        "A1:O1",
+        "A1:P1",
         {
             "backgroundColor": {
                 "red": 0.25,
@@ -851,16 +851,22 @@ def get_monthly_sheet(year, month, sheet_name):
         )
     
 
+
 def write_change(user_id, task):
-    """シフト変更をシフト申請シートに記録する。"""
+    """シフト変更を申請履歴に記録し、シフト希望も更新する。"""
 
     year, month = get_target_month(task)
-    sheet = get_monthly_sheet(year, month, "シフト希望")
 
-    setup_application_sheet(sheet)
+    # 変更履歴は「シフト申請」に保存
+    application_sheet = get_monthly_sheet(
+        year, month, "シフト申請"
+    )
+
+    setup_application_sheet(application_sheet)
     staff_name = get_staff_name(user_id)
 
-    sheet.append_row([
+    # 変更前後の情報を履歴として保存
+    application_sheet.append_row([
         user_id,
         staff_name,
         "シフト変更",
@@ -879,7 +885,81 @@ def write_change(user_id, task):
         task.get("memo") or "",
     ])
 
-    return "シフト変更申請を記録しました。"
+    # 「シフト希望」の該当セルを更新
+    shift_sheet = get_monthly_sheet(
+        year, month, "シフト希望"
+    )
+
+    date_value = date.fromisoformat(str(task["date"]))
+    date_header = f"{date_value.month}/{date_value.day}"
+
+    # スタッフの行を探す
+    staff_names = shift_sheet.col_values(1)
+
+    staff_row = next(
+        (
+            row
+            for row, name in enumerate(staff_names, start=1)
+            if row >= 3 and name.strip() == staff_name
+        ),
+        None
+    )
+
+    if staff_row is None:
+        raise ValueError(
+            f"シフト表にスタッフが見つかりません: {staff_name}"
+        )
+
+    # 日付の列を探す
+    headers = shift_sheet.row_values(1)
+
+    date_column = next(
+        (
+            col
+            for col, value in enumerate(headers, start=1)
+            if col >= 2 and value == date_header
+        ),
+        None
+    )
+
+    if date_column is None:
+        raise ValueError(
+            f"シフト表に日付が見つかりません: {date_header}"
+        )
+
+    # 更新する時間を作成
+    new_start = task.get("new_start_time") or "未定"
+    new_end = task.get("new_end_time") or "未定"
+
+    shift_text = f"{new_start}~{new_end}"
+
+    memo = task.get("memo") or ""
+    if memo:
+        shift_text += f"（{memo}）"
+
+    # シフト希望を更新
+    shift_sheet.update_cell(
+        staff_row,
+        date_column,
+        shift_text
+    )
+
+    # 更新セルを黄色にする
+    cell = f"{column_letter(date_column)}{staff_row}"
+
+    shift_sheet.format(
+        cell,
+        {
+            "backgroundColor": {
+                "red": 1.0,
+                "green": 0.95,
+                "blue": 0.65,
+            }
+        }
+    )
+
+    return "シフト変更を記録し、シフト希望を更新しました。"
+
 
 
 
@@ -1074,6 +1154,7 @@ def write_preference(user_id, task):
         task.get("content") or "",
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         False,
+        "",
     ])
 
     return "固定希望を記録しました。"

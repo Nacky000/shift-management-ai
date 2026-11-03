@@ -26,7 +26,12 @@ def test_shift_task_calls_shift_handler(monkeypatch):
 
     result = dispatcher.dispatch_tasks(USER_ID, data)
 
-    mock_handler.assert_called_once_with(USER_ID, data["tasks"][0])
+    expected_task = {
+        **data["tasks"][0],
+        "date_error": None,
+    }
+
+    mock_handler.assert_called_once_with(USER_ID, expected_task)
     assert result == "シフト希望を登録しました"
 
 
@@ -100,3 +105,53 @@ def test_handler_exception_returns_error_reply(monkeypatch):
 
     mock_handler.assert_called_once_with(USER_ID, task)
     assert result == dispatcher.ERROR_REPLY
+
+
+def test_shift_task_adds_default_date_error(monkeypatch):
+    """date_errorがない場合、Noneが補完される"""
+
+    mock_handler = Mock(return_value="登録成功")
+    monkeypatch.setitem(dispatcher.HANDLERS, "shift", mock_handler)
+
+    task = {
+        "action": "write",
+        "type": "shift",
+        "date": "2026-11-12",
+        "start_time": "18:00",
+        "end_time": "22:00",
+        "ambiguity": [],
+    }
+
+    dispatcher.dispatch_tasks(USER_ID, {"tasks": [task]})
+
+    expected_task = {
+        **task,
+        "date_error": None,
+    }
+
+    mock_handler.assert_called_once_with(USER_ID, expected_task)
+
+
+def test_shift_task_preserves_date_error(monkeypatch):
+    """date_errorがある場合、handlerを呼ばず確認メッセージを返す"""
+
+    mock_handler = Mock(return_value="確認が必要です")
+    monkeypatch.setitem(dispatcher.HANDLERS, "shift", mock_handler)
+
+    task = {
+        "action": "write",
+        "type": "shift",
+        "date": None,
+        "start_time": "18:00",
+        "end_time": "22:00",
+        "ambiguity": [],
+        "date_error": "日付を特定できません",
+    }
+
+    result = dispatcher.dispatch_tasks(USER_ID, {"tasks": [task]})
+
+    mock_handler.assert_not_called()
+
+    assert "【日付の確認】" in result
+    assert "日付を特定できません" in result
+    assert "何月何日か確認して" in result

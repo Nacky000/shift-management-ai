@@ -33,3 +33,9 @@ feat: → 機能追加（今回これ）
 fix: → バグ修正
 refactor: → 設計変更
 chore: → 環境・設定系
+
+
+## テスト方法
+```bash
+python -m pytest tests -v
+```
