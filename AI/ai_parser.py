@@ -17,6 +17,59 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 DEBUG = True
 
 
+EXPECTED_ACTION = {
+    "shift": {"write", "change"},
+    "absence": {"write"},
+    "late": {"write"},
+    "preference": {"write"},
+    "memo": {"write"},
+    "question": {"read"},
+    "other": {None},
+}
+
+
+def validate_task(task):
+    if not isinstance(task, dict):
+        raise ValueError("taskがオブジェクトではありません")
+
+    if not all(key in task for key in ("action", "type", "ambiguity")):
+        raise ValueError("taskに必須キーがありません")
+
+    task_type = task["type"]
+    action = task["action"]
+
+    if task_type not in EXPECTED_ACTION:
+        raise ValueError(f"不明なtask typeです: {task_type}")
+
+    if action not in EXPECTED_ACTION[task_type]:
+        raise ValueError(
+            f"task typeとactionの組み合わせが不正です: "
+            f"{task_type}, {action}"
+        )
+
+    if not isinstance(task["ambiguity"], list):
+        raise ValueError("ambiguityが配列ではありません")
+
+    # 日付
+    if task.get("date") is not None and not isinstance(task["date"], str):
+        raise ValueError("dateは文字列またはnullである必要があります")
+
+    # 時刻関連
+    time_fields = [
+        "start_time",
+        "end_time",
+        "old_start_time",
+        "old_end_time",
+        "new_start_time",
+        "new_end_time",
+    ]
+
+    for field in time_fields:
+        value = task.get(field)
+        if value is not None and not isinstance(value, str):
+            raise ValueError(f"{field}は文字列またはnullである必要があります")
+
+
 def other_task(user_text):
     """AIが解析できなかった場合のフォールバック"""
     return {
@@ -70,14 +123,7 @@ def parse_message(user_text):
 
         # 各taskの最低限の形式を確認
         for task in result["tasks"]:
-            if not isinstance(task, dict):
-                raise ValueError("taskがオブジェクトではありません")
-
-            if not all(key in task for key in ("action", "type", "ambiguity")):
-                raise ValueError("taskに必須キーがありません")
-
-            if not isinstance(task["ambiguity"], list):
-                raise ValueError("ambiguityが配列ではありません")
+            validate_task(task)
 
         return result
 

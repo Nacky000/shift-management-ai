@@ -54,6 +54,7 @@ APPLICATION_HEADERS = [
     "補足",
     "登録日時",
     "確認済み",
+    "メモ",
 ]
 
 # 欠勤・遅刻などを記録するシート
@@ -64,7 +65,7 @@ ATTENDANCE_HEADERS = [
     "対象日",
     "開始予定時刻",
     "遅延時間（分）",
-    "理由・補足",
+    "送信文",
     "登録日時",
     "確認済み",
 ]
@@ -576,8 +577,8 @@ def write_schedule(user_id, task):
 
     # 日付・勤務時間を取得
     date_value = task.get("date")
-    start_time = task.get("start_time") or task.get("start")
-    end_time = task.get("end_time") or task.get("end")
+    start_time = task.get("start_time")
+    end_time = task.get("end_time")
     memo = task.get("memo") or ""
 
     if not date_value:
@@ -854,7 +855,7 @@ def write_change(user_id, task):
     """シフト変更をシフト申請シートに記録する。"""
 
     year, month = get_target_month(task)
-    sheet = get_monthly_sheet(year, month, "シフト申請")
+    sheet = get_monthly_sheet(year, month, "シフト希望")
 
     setup_application_sheet(sheet)
     staff_name = get_staff_name(user_id)
@@ -865,16 +866,17 @@ def write_change(user_id, task):
         "シフト変更",
         task.get("date") or "",
         "",
-        task.get("old_start") or "",
-        task.get("old_end") or "",
-        task.get("new_start") or "",
-        task.get("new_end") or "",
+        task.get("old_start_time") or "",
+        task.get("old_end_time") or "",
+        task.get("new_start_time") or "",
+        task.get("new_end_time") or "",
         "",
         "",
         "",
         task.get("reason") or "",
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         False,
+        task.get("memo") or "",
     ])
 
     return "シフト変更申請を記録しました。"
@@ -889,18 +891,6 @@ def write_change(user_id, task):
 # =========================
 # 勤務連絡
 # =========================
-
-ATTENDANCE_HEADERS = [
-    "user_id",
-    "スタッフ名",
-    "連絡種別",
-    "対象日",
-    "開始予定時刻",
-    "遅延時間（分）",
-    "理由・補足",
-    "登録日時",
-    "確認済み",
-]
 
 def get_staff_name(user_id):
     """LINEユーザーIDからスタッフ名を取得する。"""

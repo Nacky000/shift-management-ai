@@ -27,16 +27,17 @@ HANDLERS = {
     "other": other_handler,
 }
 
-# type ごとに許可する action(プロンプトの定義と一致させる)
+# type ごとに許可する action
 EXPECTED_ACTION = {
-    "shift": "write",
-    "absence": "write",
-    "late": "write",
-    "preference": "write",
-    "memo": "write",
-    "question": "read",
-    "other": None,
+    "shift": {"write", "change"},
+    "absence": {"write"},
+    "late": {"write"},
+    "preference": {"write"},
+    "memo": {"write"},
+    "question": {"read"},
+    "other": {None},
 }
+
 
 def dispatch(user_id, task):
     """1件のtaskを対応するhandlerへ振り分け返信文を返す"""
@@ -44,14 +45,15 @@ def dispatch(user_id, task):
     task_type = task.get("type")
     action = task.get("action")
 
-    handler = HANDLERS.get(task_type)
-    if handler is None:
+    if not isinstance(task_type, str) or task_type not in HANDLERS:
         logger.error("Unknown task type: %r", task)
         return ERROR_REPLY
 
-    if action != EXPECTED_ACTION[task_type]:
+    if action not in EXPECTED_ACTION[task_type]:
         logger.error("Invalid action for %s: %r", task_type, task)
         return ERROR_REPLY
+
+    handler = HANDLERS[task_type]
 
     try:
         return handler(user_id, task)
@@ -64,6 +66,7 @@ def dispatch_tasks(user_id, data):
     """
     AIの解析結果を受け取り日付を一括変換してから，各handlerで処理し返信文をまとめる
     """
+
     # 日付を一括変換
     data = resolve_task_dates(data)
 
